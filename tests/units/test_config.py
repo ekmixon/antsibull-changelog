@@ -188,26 +188,26 @@ def test_config_store_collection(collection_config_path):
     config.store()
     config = ChangelogConfig.load(paths, collection_details)
     assert config.always_refresh == 'full'
-    assert config.flatmap is True
+    assert config.flatmap
 
     config.always_refresh = True
     config.store()
     config = ChangelogConfig.load(paths, collection_details)
     assert config.always_refresh == 'full'
-    assert config.flatmap is True
+    assert config.flatmap
 
     config.always_refresh = 'none'
     config.flatmap = False
     config.store()
     config = ChangelogConfig.load(paths, collection_details)
     assert config.always_refresh == 'none'
-    assert config.flatmap is False
+    assert not config.flatmap
 
     config.always_refresh = False
     config.store()
     config = ChangelogConfig.load(paths, collection_details)
     assert config.always_refresh == 'none'
-    assert config.flatmap is False
+    assert not config.flatmap
 
 
 def test_config_store_other(other_config_path):

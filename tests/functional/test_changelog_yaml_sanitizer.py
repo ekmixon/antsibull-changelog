@@ -35,7 +35,7 @@ def load_tests():
         for filename in glob.glob(os.path.join(BASE_DIR, 'good', pattern)):
             GOOD_TESTS.append(filename)
         for filename in glob.glob(os.path.join(BASE_DIR, 'bad', pattern)):
-            json_filename = os.path.splitext(filename)[0] + '.json'
+            json_filename = f'{os.path.splitext(filename)[0]}.json'
             if os.path.exists(json_filename):
                 BAD_TESTS.append((filename, json_filename))
             else:
@@ -64,12 +64,12 @@ def test_bad_changelog_yaml_files(yaml_filename, json_filename):
     try:
         data = load_yaml(yaml_filename)
         if not STORE_RESULT:
-            sanitized_data = load_yaml(yaml_filename + '-sanitized')
+            sanitized_data = load_yaml(f'{yaml_filename}-sanitized')
     except Exception:
         # We are only interested in parsable YAML
         return
     result = sanitize_changes(data, config)
     if STORE_RESULT:
-        store_yaml(yaml_filename + '-sanitized', result)
+        store_yaml(f'{yaml_filename}-sanitized', result)
     else:
         assert result == sanitized_data

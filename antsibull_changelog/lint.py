@@ -100,29 +100,29 @@ class ChangelogYamlLinter:
         :arg yaml_path: Path to this dictionary in the YAML
         :arg is_module: Whether this is a module description or a plugin description
         """
-        if self.verify_type(plugin, (dict, ), yaml_path):
-            name = plugin.get('name')
-            if self.verify_type(name, (str, ), yaml_path + ['name']):
-                name = cast(str, name)
-                if '.' in name:
-                    self.errors.append((self.path, 0, 0, '{0} must not be a FQCN'.format(
-                        self._format_yaml_path(yaml_path + ['name'])
-                    )))
-            self.verify_type(plugin.get('description'), (str, ), yaml_path + ['description'])
-            namespace = plugin.get('namespace')
-            if is_module:
-                if self.verify_type(namespace, (str, ), yaml_path + ['namespace']):
-                    namespace = cast(str, namespace)
-                    if ' ' in namespace or '/' in namespace or '\\' in namespace:
-                        self.errors.append((self.path, 0, 0, '{0} must not contain spaces or '
-                                            'slashes'.format(
-                                                self._format_yaml_path(yaml_path + ['namespace'])
-                                            )))
-            else:
-                if namespace is not None:
-                    self.errors.append((self.path, 0, 0, '{0} must be null'.format(
-                        self._format_yaml_path(yaml_path + ['namespace'])
-                    )))
+        if not self.verify_type(plugin, (dict,), yaml_path):
+            return
+        name = plugin.get('name')
+        if self.verify_type(name, (str, ), yaml_path + ['name']):
+            name = cast(str, name)
+            if '.' in name:
+                self.errors.append((self.path, 0, 0, '{0} must not be a FQCN'.format(
+                    self._format_yaml_path(yaml_path + ['name'])
+                )))
+        self.verify_type(plugin.get('description'), (str, ), yaml_path + ['description'])
+        namespace = plugin.get('namespace')
+        if is_module:
+            if self.verify_type(namespace, (str, ), yaml_path + ['namespace']):
+                namespace = cast(str, namespace)
+                if ' ' in namespace or '/' in namespace or '\\' in namespace:
+                    self.errors.append((self.path, 0, 0, '{0} must not contain spaces or '
+                                        'slashes'.format(
+                                            self._format_yaml_path(yaml_path + ['namespace'])
+                                        )))
+        elif namespace is not None:
+            self.errors.append((self.path, 0, 0, '{0} must be null'.format(
+                self._format_yaml_path(yaml_path + ['namespace'])
+            )))
 
     def lint_plugins(self, version_str: str, plugins_dict: dict):
         """
@@ -132,13 +132,17 @@ class ChangelogYamlLinter:
         :arg plugins_dict: The plugin dictionary
         """
         for plugin_type, plugins in plugins_dict.items():
-            if self.verify_type(plugin_type, (str, ), ['releases', version_str, 'plugins']):
-                if plugin_type not in self.valid_plugin_types:
-                    self.errors.append((
-                        self.path, 0, 0,
-                        'Unknown plugin type {0!r} in {1}'.format(
-                            plugin_type, self._format_yaml_path(
-                                ['releases', version_str, 'plugins']))))
+            if (
+                self.verify_type(
+                    plugin_type, (str,), ['releases', version_str, 'plugins']
+                )
+                and plugin_type not in self.valid_plugin_types
+            ):
+                self.errors.append((
+                    self.path, 0, 0,
+                    'Unknown plugin type {0!r} in {1}'.format(
+                        plugin_type, self._format_yaml_path(
+                            ['releases', version_str, 'plugins']))))
             if self.verify_type(plugins, (list, ),
                                 ['releases', version_str, 'plugins', plugin_type]):
                 for idx, plugin in enumerate(plugins):
@@ -154,13 +158,17 @@ class ChangelogYamlLinter:
         :arg objects_dict: The object dictionary
         """
         for object_type, objects in objects_dict.items():
-            if self.verify_type(object_type, (str, ), ['releases', version_str, 'objects']):
-                if object_type not in OBJECT_TYPES:
-                    self.errors.append((
-                        self.path, 0, 0,
-                        'Unknown object type {0!r} in {1}'.format(
-                            object_type, self._format_yaml_path(
-                                ['releases', version_str, 'objects']))))
+            if (
+                self.verify_type(
+                    object_type, (str,), ['releases', version_str, 'objects']
+                )
+                and object_type not in OBJECT_TYPES
+            ):
+                self.errors.append((
+                    self.path, 0, 0,
+                    'Unknown object type {0!r} in {1}'.format(
+                        object_type, self._format_yaml_path(
+                            ['releases', version_str, 'objects']))))
             if self.verify_type(objects, (list, ),
                                 ['releases', version_str, 'objects', object_type]):
                 for idx, ansible_object in enumerate(objects):
@@ -267,11 +275,14 @@ class ChangelogYamlLinter:
             for version_str, entry in changelog_yaml['releases'].items():
                 # Check version
                 version = self.check_version(version_str, 'Invalid release version')
-                if version is not None and ancestor is not None:
-                    if version <= ancestor:
-                        self.errors.append((self.path, 0, 0,
-                                            'release version {0!r} must come after ancestor '
-                                            'version {1!r}'.format(version_str, ancestor_str)))
+                if (
+                    version is not None
+                    and ancestor is not None
+                    and version <= ancestor
+                ):
+                    self.errors.append((self.path, 0, 0,
+                                        'release version {0!r} must come after ancestor '
+                                        'version {1!r}'.format(version_str, ancestor_str)))
 
                 # Check release information
                 if self.verify_type(entry, (dict, ), ['releases', version_str]):

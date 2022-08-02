@@ -59,7 +59,7 @@ class RstBuilder:
             if line_no > 0 and not line:
                 self.lines.append('')
                 continue
-            self.lines.append('%s %s' % (' ' if line_no else '-', line))
+            self.lines.append(f"{' ' if line_no else '-'} {line}")
 
     def generate(self) -> str:
         """

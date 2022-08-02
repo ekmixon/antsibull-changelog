@@ -185,9 +185,9 @@ class ChangelogFragmentLinter:
                                'section "%s" entry #%s must not have a non-null "namespace" '
                                'entry' % (section, index)))
 
-            invalid_keys = sorted([
-                k for k in entry if k not in ('name', 'description', 'namespace')])
-            if invalid_keys:
+            if invalid_keys := sorted(
+                [k for k in entry if k not in ('name', 'description', 'namespace')]
+            ):
                 errors.append((fragment.path, 0, 0,
                                'section "%s" entry #%s has invalid keys %s' % (
                                    section, index,
@@ -216,7 +216,7 @@ class ChangelogFragmentLinter:
                                'not %s' % (section, type(lines).__name__)))
 
             if section not in self.config.sections and section != self.config.trivial_section_name:
-                errors.append((fragment.path, 0, 0, 'invalid section: %s' % section))
+                errors.append((fragment.path, 0, 0, f'invalid section: {section}'))
 
     @staticmethod
     def _lint_lines(errors: List[Tuple[str, int, int, str]],
@@ -258,8 +258,15 @@ class ChangelogFragmentLinter:
                 self._lint_lines(errors, fragment, section, lines)
 
         else:
-            errors.append((fragment.path, 0, 0,
-                           'file must be a mapping not %s' % (type(fragment.content).__name__, )))
+            errors.append(
+                (
+                    fragment.path,
+                    0,
+                    0,
+                    f'file must be a mapping not {type(fragment.content).__name__}',
+                )
+            )
+
 
         return errors
 

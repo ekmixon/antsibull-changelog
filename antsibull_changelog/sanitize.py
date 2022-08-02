@@ -67,10 +67,7 @@ class Sanitizer:  # pylint: disable=too-few-public-methods
                     result[key] = value
             elif key == self.config.trivial_section_name or key in self.config.sections:
                 if isinstance(value, list):
-                    entries = []
-                    for entry in value:
-                        if isinstance(entry, str):
-                            entries.append(entry)
+                    entries = [entry for entry in value if isinstance(entry, str)]
                     result[key] = entries
         return result
 
@@ -109,8 +106,7 @@ class Sanitizer:  # pylint: disable=too-few-public-methods
         for key, value in data.items():
             if key not in self.plugin_types or not isinstance(value, list):
                 continue
-            sanitized_value = self._sanitize_modules(value, are_modules=False)
-            if sanitized_value:
+            if sanitized_value := self._sanitize_modules(value, are_modules=False):
                 result[key] = sanitized_value
         return result
 
@@ -119,36 +115,28 @@ class Sanitizer:  # pylint: disable=too-few-public-methods
         for key, value in data.items():
             if key not in OBJECT_TYPES or not isinstance(value, list):
                 continue
-            sanitized_value = self._sanitize_modules(value, are_modules=False)
-            if sanitized_value:
+            if sanitized_value := self._sanitize_modules(value, are_modules=False):
                 result[key] = sanitized_value
         return result
 
     @staticmethod
     def _sanitize_fragments(data: List) -> List[str]:
-        result = []
-        for entry in data:
-            if isinstance(entry, str):
-                result.append(entry)
-        return result
+        return [entry for entry in data if isinstance(entry, str)]
 
     def _sanitize_modules_plugins(self, release: Mapping, result: Dict[str, Any]) -> None:
         modules = release.get('modules')
         if isinstance(modules, list):
-            sanitized_modules = self._sanitize_modules(modules)
-            if sanitized_modules:
+            if sanitized_modules := self._sanitize_modules(modules):
                 result['modules'] = sanitized_modules
 
         plugins = release.get('plugins')
         if isinstance(plugins, collections.abc.Mapping):
-            sanitized_plugins = self._sanitize_plugins(plugins)
-            if sanitized_plugins:
+            if sanitized_plugins := self._sanitize_plugins(plugins):
                 result['plugins'] = sanitized_plugins
 
         objects = release.get('objects')
         if isinstance(objects, collections.abc.Mapping):
-            sanitized_objects = self._sanitize_objects(objects)
-            if sanitized_objects:
+            if sanitized_objects := self._sanitize_objects(objects):
                 result['objects'] = sanitized_objects
 
     def _sanitize_release(self, release: Mapping) -> Dict[str, Any]:
@@ -164,45 +152,42 @@ class Sanitizer:  # pylint: disable=too-few-public-methods
 
         changes = release.get('changes')
         if isinstance(changes, collections.abc.Mapping):
-            sanitized_changes = self._sanitize_changes(changes)
-            if sanitized_changes:
+            if sanitized_changes := self._sanitize_changes(changes):
                 result['changes'] = sanitized_changes
 
         self._sanitize_modules_plugins(release, result)
 
         fragments = release.get('fragments')
         if isinstance(fragments, list):
-            sanitized_fragments = self._sanitize_fragments(fragments)
-            if sanitized_fragments:
+            if sanitized_fragments := self._sanitize_fragments(fragments):
                 result['fragments'] = sanitized_fragments
 
         return result
 
     def _sanitize_releases(self, releases: Any) -> Mapping[str, Mapping]:
-        if not isinstance(releases, collections.abc.Mapping):
-            return {}
-        result = {}
-        for key, value in releases.items():
-            if not self._is_version(key) or not isinstance(value, collections.abc.Mapping):
-                continue
-            result[key] = self._sanitize_release(value)
-        return result
+        return (
+            {
+                key: self._sanitize_release(value)
+                for key, value in releases.items()
+                if self._is_version(key)
+                and isinstance(value, collections.abc.Mapping)
+            }
+            if isinstance(releases, collections.abc.Mapping)
+            else {}
+        )
 
     def sanitize(self, data: Any) -> Dict[str, Any]:
         """
         Given an arbitrary object, sanitizes it so it a valid changelog.yaml object.
         """
-        if not isinstance(data, collections.abc.Mapping):
-            # FUBAR: return an empty changelog
-            return {
-                'ancestor': None,
-                'releases': {}
+        return (
+            {
+                'ancestor': self._sanitize_ancestor(data.get('ancestor')),
+                'releases': self._sanitize_releases(data.get('releases')),
             }
-        result = {
-            'ancestor': self._sanitize_ancestor(data.get('ancestor')),
-            'releases': self._sanitize_releases(data.get('releases')),
-        }
-        return result
+            if isinstance(data, collections.abc.Mapping)
+            else {'ancestor': None, 'releases': {}}
+        )
 
 
 def sanitize_changes(data: Any, config: ChangelogConfig) -> Dict[str, Any]:

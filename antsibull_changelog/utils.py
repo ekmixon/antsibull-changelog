@@ -44,9 +44,11 @@ def is_release_version(config: ChangelogConfig, version: str) -> bool:
             return not bool(semantic_version.Version(version).prerelease)
         except Exception as exc:  # pylint: disable=broad-except
             raise ChangelogError(
-                'unsupported semantic version format: %s (%s)' % (version, exc)) from exc
+                f'unsupported semantic version format: {version} ({exc})'
+            ) from exc
 
-    tag_format = 'v%s' % version
+
+    tag_format = f'v{version}'
 
     if re.search(config.pre_release_tag_re, tag_format):
         return False
@@ -54,7 +56,7 @@ def is_release_version(config: ChangelogConfig, version: str) -> bool:
     if re.search(config.release_tag_re, tag_format):
         return True
 
-    raise ChangelogError('unsupported version format: %s' % version)
+    raise ChangelogError(f'unsupported version format: {version}')
 
 
 def collect_versions(versions: Collection[str],
@@ -71,12 +73,14 @@ def collect_versions(versions: Collection[str],
     result: List[Tuple[str, List[str]]] = []
     entry: Optional[Tuple[str, List[str]]] = None
     for version in sorted(versions, reverse=True, key=version_constructor):
-        if after_version is not None:
-            if version_constructor(version) <= version_constructor(after_version):
-                continue
-        if until_version is not None:
-            if version_constructor(version) > version_constructor(until_version):
-                continue
+        if after_version is not None and version_constructor(
+            version
+        ) <= version_constructor(after_version):
+            continue
+        if until_version is not None and version_constructor(
+            version
+        ) > version_constructor(until_version):
+            continue
 
         version_list: List[str]
         if not squash and is_release_version(config, version):

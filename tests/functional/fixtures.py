@@ -40,8 +40,13 @@ def diff(old: str, new: str) -> str:
         elif opcode == 'delete':
             output.append("\033[41m\033[9m" + seqm.a[a0:a1] + "\033[29m\033[49m")  # removed
         elif opcode == 'replace':
-            output.append("\033[41m\033[9m" + seqm.a[a0:a1] + "\033[29m\033[49m")  # removed
-            output.append("\033[42m" + seqm.b[b0:b1] + "\033[49m")  # inserted
+            output.extend(
+                (
+                    "\033[41m\033[9m" + seqm.a[a0:a1] + "\033[29m\033[49m",
+                    "\033[42m" + seqm.b[b0:b1] + "\033[49m",
+                )
+            )
+
         else:
             raise RuntimeError("unexpected opcode")
     return ''.join(output)
@@ -66,8 +71,8 @@ class Differences:
         self.removed_dirs = []
         self.removed_files = []
         self.changed_files = []
-        self.file_contents = dict()
-        self.file_differences = dict()
+        self.file_contents = {}
+        self.file_differences = {}
 
     def sort(self) -> None:
         self.added_dirs.sort()
@@ -128,8 +133,8 @@ class ChangelogEnvironment:
         self.paths = paths
         self.config = ChangelogConfig.default(paths, CollectionDetails(paths))
 
-        self.created_dirs = set([self.paths.base_dir])
-        self.created_files = dict()
+        self.created_dirs = {self.paths.base_dir}
+        self.created_files = {}
 
     def _write(self, path: str, data: bytes):
         with open(path, 'wb') as f:
@@ -235,7 +240,7 @@ class ChangelogEnvironment:
 
     def _get_current_state(self) -> Tuple[Set[str], Dict[str, bytes]]:
         created_dirs: Set[str] = set()
-        created_files: Dict[str, bytes] = dict()
+        created_files: Dict[str, bytes] = {}
         for dirpath, _, filenames in os.walk(self.paths.base_dir):
             created_dirs.add(dirpath)
             for filename in filenames:
@@ -289,17 +294,17 @@ class ChangelogEnvironment:
                                  plugin_data: Dict[str, Dict[str, Any]],
                                  plugin_type: str) -> Dict[str, Any]:
         if plugin_type == 'role':
-            # Role listing works differently
-            result = dict()
-            for role, role_data in plugin_data[plugin_type].items():
-                result[role] = {
+            return {
+                role: {
                     'collection': role_data['collection'],
                     'entry_points': {
                         ep: ep_data.get('short_description')
                         for ep, ep_data in role_data['entry_points'].items()
-                    }
+                    },
                 }
-            return result
+                for role, role_data in plugin_data[plugin_type].items()
+            }
+
         return {
             plugin_name: plugin_data.get('short_description')
             for plugin_name, plugin_data in plugin_data[plugin_type].items()
@@ -310,7 +315,7 @@ class ChangelogEnvironment:
                                  plugin_type: str,
                                  plugin_names: List[str],
                                  base_dir: str) -> Dict[str, Any]:
-        result = dict()
+        result = {}
         for plugin_name in plugin_names:
             doc = plugin_data[plugin_type][plugin_name].copy()
             if 'doc' in doc and 'filename' in doc['doc']:

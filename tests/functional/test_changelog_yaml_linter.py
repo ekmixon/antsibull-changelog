@@ -29,7 +29,7 @@ def load_tests():
         for filename in glob.glob(os.path.join(BASE_DIR, 'good', pattern)):
             GOOD_TESTS.append(filename)
         for filename in glob.glob(os.path.join(BASE_DIR, 'bad', pattern)):
-            json_filename = os.path.splitext(filename)[0] + '.json'
+            json_filename = f'{os.path.splitext(filename)[0]}.json'
             if os.path.exists(json_filename):
                 BAD_TESTS.append((filename, json_filename))
             else:
@@ -63,5 +63,5 @@ def test_bad_changelog_yaml_files(yaml_filename, json_filename):
 
     assert len(errors) == len(data['errors'])
     for error1, error2 in zip(errors, data['errors']):
-        assert error1[0:2] == error2[0:2]
+        assert error1[:2] == error2[:2]
         assert re.match(error2[2], error1[2], flags=re.DOTALL) is not None

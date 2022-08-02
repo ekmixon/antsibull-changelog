@@ -61,15 +61,17 @@ class PluginDescription:
         plugins = []
 
         for plugin_type, plugin_data in data.items():
-            for plugin_name, plugin_details in plugin_data.items():
-                plugins.append(PluginDescription(
+            plugins.extend(
+                PluginDescription(
                     plugin_type=plugin_type,
                     name=plugin_name,
                     namespace=plugin_details.get('namespace'),
                     description=plugin_details['description'],
                     version_added=plugin_details['version_added'],
                     category=category,
-                ))
+                )
+                for plugin_name, plugin_details in plugin_data.items()
+            )
 
         return plugins
 
@@ -127,11 +129,11 @@ def jsondoc_to_metadata(paths: PathsConfig,  # pylint: disable=too-many-argument
     :arg category: Set to ``object`` for roles and playbooks
     """
     namespace: Optional[str] = None
-    if collection_name and name.startswith(collection_name + '.'):
+    if collection_name and name.startswith(f'{collection_name}.'):
         name = name[len(collection_name) + 1:]
-    docs: dict = data.get('doc') or dict()
+    docs: dict = data.get('doc') or {}
     if category == 'object' and plugin_type == 'role':
-        entrypoints: dict = data.get('entry_points') or dict()
+        entrypoints: dict = data.get('entry_points') or {}
         if 'main' in entrypoints:
             docs = entrypoints['main']
     if category == 'plugin' and plugin_type == 'module':
@@ -190,11 +192,12 @@ def list_plugins_walk(paths: PathsConfig,
         for filename in filenames:
             if filename == '__init__.py' or not filename.endswith('.py'):
                 continue
-            if not paths.is_collection and dirpath == plugin_source_path:
-                # Skip files which are *not* plugins/modules, but live in these directories inside
-                # ansible-core/-base.
-                if (plugin_type, filename) in PLUGIN_EXCEPTIONS:
-                    continue
+            if (
+                not paths.is_collection
+                and dirpath == plugin_source_path
+                and (plugin_type, filename) in PLUGIN_EXCEPTIONS
+            ):
+                continue
             path = follow_links(os.path.join(dirpath, filename))
             path = os.path.splitext(path)[0]
             relpath = os.path.relpath(path, plugin_source_path)
@@ -237,18 +240,19 @@ def list_plugins_ansibledoc(paths: PathsConfig,
     output = subprocess.check_output(command)
     plugins_list = json.loads(output.decode('utf-8'))
 
-    if not collection_name:
-        # Filter out FQCNs
-        plugins_list = {
-            name: data for name, data in plugins_list.items()
+    plugins_list = (
+        {
+            name: data
+            for name, data in plugins_list.items()
+            if name.startswith(f'{collection_name}.')
+        }
+        if collection_name
+        else {
+            name: data
+            for name, data in plugins_list.items()
             if '.' not in name or name.startswith('ansible.builtin.')
         }
-    else:
-        # Filter out without / wrong FQCN
-        plugins_list = {
-            name: data for name, data in plugins_list.items()
-            if name.startswith(collection_name + '.')
-        }
+    )
 
     return sorted(plugins_list.keys())
 
@@ -340,8 +344,10 @@ def _load_collection_plugins(plugins_data: Dict[str, Any],
                              paths: PathsConfig,
                              collection_details: CollectionDetails,
                              use_ansible_doc: bool) -> None:
-    collection_name = '{}.{}'.format(
-        collection_details.get_namespace(), collection_details.get_name())
+    collection_name = (
+        f'{collection_details.get_namespace()}.{collection_details.get_name()}'
+    )
+
 
     with CollectionCopier(
             paths, collection_details.get_namespace(), collection_details.get_name()

@@ -252,8 +252,8 @@ class CollectionDetails:
         """
         Get collection's flatmap flag.
         """
-        help_text = 'You can explicitly specify the value with `--collection-flatmap`.'
         if self.flatmap is None and not self.galaxy_yaml_loaded:
+            help_text = 'You can explicitly specify the value with `--collection-flatmap`.'
             self._load_galaxy_yaml('type', what_for='determine flatmapping', help_text=help_text)
         return self.flatmap
 
@@ -380,7 +380,7 @@ class ChangelogConfig:
             raise ChangelogError('changes_format == "classic" cannot be '
                                  'combined with prevent_known_fragments == False')
 
-    def store(self) -> None:  # noqa: C901
+    def store(self) -> None:    # noqa: C901
         """
         Store changelog configuration file to disk.
         """
@@ -404,10 +404,11 @@ class ChangelogConfig:
             if self.use_semantic_versioning:
                 config['use_semantic_versioning'] = True
             else:
-                config.update({
+                config |= {
                     'release_tag_re': self.release_tag_re,
                     'pre_release_tag_re': self.pre_release_tag_re,
-                })
+                }
+
         if self.title is not None:
             config['title'] = self.title
         should_always_refresh = (self.changes_format == 'classic')
@@ -422,11 +423,12 @@ class ChangelogConfig:
         if self.is_other_project:
             config['is_other_project'] = self.is_other_project
 
-        sections = []
-        for key, value in self.sections.items():
-            if key == self.prelude_name and value == self.prelude_title:
-                continue
-            sections.append([key, value])
+        sections = [
+            [key, value]
+            for key, value in self.sections.items()
+            if key != self.prelude_name or value != self.prelude_title
+        ]
+
         config['sections'] = sections
 
         store_yaml(self.paths.config_path, config)

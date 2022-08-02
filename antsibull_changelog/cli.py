@@ -79,9 +79,9 @@ def parse_boolean_arg(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     value = str(value)
-    if value.lower() in ('yes', 'true'):
+    if value.lower() in {'yes', 'true'}:
         return True
-    if value.lower() in ('no', 'false'):
+    if value.lower() in {'no', 'false'}:
         return False
     raise argparse.ArgumentTypeError('Cannot interpret as boolean')
 
@@ -273,10 +273,14 @@ def command_init(args: Any) -> int:
 
     collection_details = CollectionDetails(paths)
 
-    title = 'Project'
-    if not is_other_project:
-        title = '{0}.{1}'.format(
-            collection_details.get_namespace().title(), collection_details.get_name().title())
+    title = (
+        'Project'
+        if is_other_project
+        else '{0}.{1}'.format(
+            collection_details.get_namespace().title(),
+            collection_details.get_name().title(),
+        )
+    )
 
     config = ChangelogConfig.default(paths, collection_details, title=title)
 
@@ -536,9 +540,14 @@ def lint_fragments(config: ChangelogConfig, fragments: List[ChangelogFragment],
     for fragment in fragments:
         errors += linter.lint(fragment)
 
-    messages = sorted(set(
-        '%s:%d:%d: %s' % (os.path.relpath(error[0]), error[1], error[2], error[3])
-        for error in errors))
+    messages = sorted(
+        {
+            '%s:%d:%d: %s'
+            % (os.path.relpath(error[0]), error[1], error[2], error[3])
+            for error in errors
+        }
+    )
+
 
     for message in messages:
         print(message)

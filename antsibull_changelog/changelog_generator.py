@@ -38,9 +38,9 @@ class ChangelogEntry:
     def __init__(self, version: str):
         self.version = version
         self.modules = []
-        self.plugins = dict()
-        self.objects = dict()
-        self.changes = dict()
+        self.plugins = {}
+        self.objects = {}
+        self.changes = {}
         self.preludes = []
 
     def has_no_changes(self, section_names: Optional[List[str]] = None) -> bool:
@@ -50,7 +50,7 @@ class ChangelogEntry:
         If ``section_names`` is not supplied, all sections will be checked.
         """
         if section_names is None:
-            return all(not content for content in self.changes)
+            return not any(self.changes)
         return all(not self.changes.get(section_name) for section_name in section_names)
 
     @property
@@ -218,7 +218,7 @@ class ChangelogGenerator:
         :arg start_level: Level to add to headings in the generated RST
         """
         if add_version:
-            builder.add_section('v%s' % changelog_entry.version, start_level)
+            builder.add_section(f'v{changelog_entry.version}', start_level)
 
         for section_name in self.config.sections:
             self._add_section(builder, changelog_entry, section_name, start_level=start_level)
@@ -226,9 +226,8 @@ class ChangelogGenerator:
         fqcn_prefix = None
         if self.config.use_fqcn:
             if self.config.paths.is_collection:
-                fqcn_prefix = '%s.%s' % (
-                    self.config.collection_details.get_namespace(),
-                    self.config.collection_details.get_name())
+                fqcn_prefix = f'{self.config.collection_details.get_namespace()}.{self.config.collection_details.get_name()}'
+
             else:
                 fqcn_prefix = 'ansible.builtin'
 
@@ -282,10 +281,10 @@ class ChangelogGenerator:
         builder = RstBuilder()
         title = self.config.title or 'Ansible'
         if major_minor_version:
-            title = '%s %s' % (title, major_minor_version)
+            title = f'{title} {major_minor_version}'
         if codename:
             title = '%s "%s"' % (title, codename)
-        builder.set_title('%s Release Notes' % (title,))
+        builder.set_title(f'{title} Release Notes')
         builder.add_raw_rst('.. contents:: Topics\n')
 
         if self.changes.ancestor and self.config.mention_ancestor:
@@ -354,8 +353,8 @@ class ChangelogGenerator:
         for plugin in sorted(plugins, key=lambda plugin: plugin['name']):
             plugin_name = plugin['name']
             if fqcn_prefix:
-                plugin_name = '%s.%s' % (fqcn_prefix, plugin_name)
-            builder.add_raw_rst('- %s - %s' % (plugin_name, plugin['description']))
+                plugin_name = f'{fqcn_prefix}.{plugin_name}'
+            builder.add_raw_rst(f"- {plugin_name} - {plugin['description']}")
 
     @staticmethod
     def _add_modules(builder: RstBuilder,
@@ -396,19 +395,17 @@ class ChangelogGenerator:
 
             previous_section = section
 
-            subsection = '.'.join(parts)
-
-            if subsection:
+            if subsection := '.'.join(parts):
                 builder.add_section(subsection, level + 1)
 
             for module in modules_by_namespace[namespace]:
                 module_name = module['name']
                 if not flatmap and namespace:
-                    module_name = '%s.%s' % (namespace, module_name)
+                    module_name = f'{namespace}.{module_name}'
                 if fqcn_prefix:
-                    module_name = '%s.%s' % (fqcn_prefix, module_name)
+                    module_name = f'{fqcn_prefix}.{module_name}'
 
-                builder.add_raw_rst('- %s - %s' % (module_name, module['description']))
+                builder.add_raw_rst(f"- {module_name} - {module['description']}")
 
             builder.add_raw_rst('')
 
@@ -428,7 +425,7 @@ class ChangelogGenerator:
             if not objects:
                 continue
 
-            builder.add_section('New ' + object_type.title() + 's', start_level + 1)
+            builder.add_section(f'New {object_type.title()}s', start_level + 1)
 
             ChangelogGenerator.add_objects(builder, objects, fqcn_prefix)
 
@@ -444,8 +441,8 @@ class ChangelogGenerator:
         for ansible_object in sorted(objects, key=lambda ansible_object: ansible_object['name']):
             object_name = ansible_object['name']
             if fqcn_prefix:
-                object_name = '%s.%s' % (fqcn_prefix, object_name)
-            builder.add_raw_rst('- %s - %s' % (object_name, ansible_object['description']))
+                object_name = f'{fqcn_prefix}.{object_name}'
+            builder.add_raw_rst(f"- {object_name} - {ansible_object['description']}")
 
 
 def generate_changelog(paths: PathsConfig,  # pylint: disable=too-many-arguments
